@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,16 +21,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'cq)z4r^rlmek06#7z+d&y5s!y6a=$qr+i0myz6b9*scgy*cuc&'
+SECRET_KEY = 'ke9ao$u32&kys4_m3)yt4g)#kl*)me0%62w^s#fe6!g^!f)_$&'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
 
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# Base URL
+BASE_URL = os.environ.get("BASE_URL", "tpi/dev/")
+
+# Static
+STATIC_ROOT = os.path.join(PROJECT_ROOT, 'static')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -55,7 +62,7 @@ ROOT_URLCONF = 'todoapp.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, "templates")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -74,12 +81,37 @@ WSGI_APPLICATION = 'todoapp.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
+## SQLite 
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': BASE_DIR / 'db.sqlite3',
+#    }
+#}
+
+## MySQL
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": os.environ.get("SQL_DATABASE", os.path.join(BASE_DIR, "db.sqlite3")),
+        "USER": os.environ.get("SQL_USER", "user"),
+        "PASSWORD": os.environ.get("SQL_PASSWORD", "password"),
+        "HOST": os.environ.get("SQL_HOST", "localhost"),
+        "PORT": os.environ.get("SQL_PORT", "5432"),
     }
 }
+
+## Postgres
+#DATABASES = {
+#    "default": {
+#        'ENGINE': os.environ.get("SQL_ENGINE", "django.db.backends.postgresql_psycopg2"),
+#        'NAME': os.environ.get("SQL_DATABASE", os.path.join(BASE_DIR, "db.sqlite3")),
+#        'USER': os.environ.get("SQL_USER", "user"),
+#        "PASSWORD": os.environ.get("SQL_PASSWORD", "password"),
+#        "HOST": os.environ.get("SQL_HOST", "localhost"),
+#        "PORT": os.environ.get("SQL_PORT", "5432")
+#    }
+#}
 
 
 # Password validation
@@ -115,7 +147,4 @@ USE_L10N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.1/howto/static-files/
-
-STATIC_URL = '/static/'
+STATIC_URL = '/' + BASE_URL + 'static/'
