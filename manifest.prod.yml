@@ -1,0 +1,237 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tpi-prod
+---
+# Database definitions
+---
+# Postgres
+---
+## Postgres ConfigMap
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: tpi-prod
+  labels:
+    app: postgres
+data:
+  SQL_ENGINE: django.db.backends.postgresql_psycopg2
+  SQL_HOST: postgres
+  SQL_PORT: "5432"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: tpi-prod
+  labels:
+    app: postgres
+type: Opaque
+data:
+  POSTGRES_PASSWORD: dHBpLXByb2Q= # tpi-prod
+  POSTGRES_DB: dHBp # tpi
+  POSTGRES_USER: dHBpLXByb2QtdXNlcg== # tpi-prod-user
+---
+## Postgres Persistent Volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-pv-volume-prod
+  namespace: tpi-prod
+  labels:
+    type: local
+    app: postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: /home/devops/tpi/prod/postgresql
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pv-claim
+  namespace: tpi-prod
+  labels:
+    app: postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Postgres Deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: tpi-prod
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:10.4
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-persistent-storage
+      volumes:
+        - name: postgres-persistent-storage
+          persistentVolumeClaim:
+            claimName: postgres-pv-claim
+---
+## Postgres service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: tpi-prod
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+---
+#  kubectl exec -n tpi-prod --stdin --tty postgres-7b7f8658c9-287bn  -- /bin/bash
+---
+# APP Definitions
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todoapp-config
+  namespace: tpi-prod
+  labels:
+    app: todoapp
+data:
+  BASE_URL: "tpi/prod/"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: todoapp-deployment
+  name: todoapp-deployment
+  namespace: tpi-prod
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      run: todoapp-deployment
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        run: todoapp-deployment
+    spec:
+      containers:
+        - image: patriciocostilla/todoapp:latest
+          imagePullPolicy: Always
+          name: todoapp-deployment
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: SQL_ENGINE
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: SQL_ENGINE
+            - name: SQL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: SQL_HOST
+            - name: SQL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: SQL_PORT
+            - name: SQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: SQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: SQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: todoapp-config
+                  key: BASE_URL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todoapp-service
+  namespace: tpi-prod
+spec:
+  selector:
+    run: todoapp-deployment
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: todoapp-ingress
+  namespace: tpi-prod
+  # annotations:
+  #  nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /tpi/prod
+            pathType: Prefix
+            backend:
+              service:
+                name: todoapp-service
+                port:
+                  number: 80
+---
+# kubectl exec -n tpi-prod --stdin --tty todoapp-deployment-59657f854b-78vcr  -- sh
