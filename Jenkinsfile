@@ -35,13 +35,18 @@ pipeline {
       }
             
     stage('Deploy') {
-      when { branch 'develop' }  
       steps {
         container('kubectl') {
           script {
+            if (env.BRANCH_NAME == 'main') {
+              sh 'kubectl --server https://10.0.2.10:6443 --token=${kubernetesToken} --insecure-skip-tls-verify apply -f manifest.prod.yml'
+              sh 'kubectl --server https://10.0.2.10:6443 --token=${kubernetesToken} --insecure-skip-tls-verify rollout restart deployment/todoapp-deployment -n tpi-prod'
+              sh 'kubectl --server https://10.0.2.10:6443 --token=${kubernetesToken} --insecure-skip-tls-verify rollout status deployment/todoapp-deployment -n tpi-prod --timeout 5m'
+            } else {
               sh 'kubectl --server https://10.0.2.10:6443 --token=${kubernetesToken} --insecure-skip-tls-verify apply -f manifest.yml'
               sh 'kubectl --server https://10.0.2.10:6443 --token=${kubernetesToken} --insecure-skip-tls-verify rollout restart deployment/todoapp-deployment -n tpi-dev'
               sh 'kubectl --server https://10.0.2.10:6443 --token=${kubernetesToken} --insecure-skip-tls-verify rollout status deployment/todoapp-deployment -n tpi-dev --timeout 5m'
+            }
           }
         }
       }
