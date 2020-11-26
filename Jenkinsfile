@@ -33,6 +33,21 @@ pipeline {
           }
         }
       }
+
+      stage('Promote') {
+      when { branch 'master' }
+      steps {
+        container('docker') {    
+          script {
+            docker.withRegistry('', credentials) {
+                def image = docker.image("patriciocostilla/todoapp:dev")
+                image.pull()
+                image.push('latest')
+            } 
+          }
+        }
+      }
+    }
             
     stage('Deploy') {
       steps {
