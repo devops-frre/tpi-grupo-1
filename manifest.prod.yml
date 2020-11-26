@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: tpi-dev
+  name: tpi-prod
 ---
 # Database definitions
 ---
@@ -14,7 +14,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-config
-  namespace: tpi-dev
+  namespace: tpi-prod
   labels:
     app: postgres
 data:
@@ -26,22 +26,22 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: postgres-secret
-  namespace: tpi-dev
+  namespace: tpi-prod
   labels:
     app: postgres
 type: Opaque
 data:
-  POSTGRES_PASSWORD: dHBpLWRldg== # tpi-dev
+  POSTGRES_PASSWORD: dHBpLXByb2Q= # tpi-prod
   POSTGRES_DB: dHBp # tpi
-  POSTGRES_USER: dHBpLWRldi11c2Vy # tpi-dev-user
+  POSTGRES_USER: dHBpLXByb2QtdXNlcg== # tpi-prod-user
 ---
 ## Postgres Persistent Volume
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: postgres-pv-volume
-  namespace: tpi-dev
+  name: postgres-pv-volume-prod
+  namespace: tpi-prod
   labels:
     type: local
     app: postgres
@@ -52,13 +52,13 @@ spec:
   accessModes:
     - ReadWriteMany
   hostPath:
-    path: /home/devops/tpi/dev/postgresql
+    path: /home/devops/tpi/prod/postgresql
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-pv-claim
-  namespace: tpi-dev
+  namespace: tpi-prod
   labels:
     app: postgres
 spec:
@@ -75,7 +75,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
-  namespace: tpi-dev
+  namespace: tpi-prod
 spec:
   selector:
     matchLabels:
@@ -111,7 +111,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: tpi-dev
+  namespace: tpi-prod
   labels:
     app: postgres
 spec:
@@ -121,7 +121,7 @@ spec:
   selector:
     app: postgres
 ---
-#  kubectl exec -n tpi-dev --stdin --tty postgres-7b7f8658c9-287bn  -- /bin/bash
+#  kubectl exec -n tpi-prod --stdin --tty postgres-7b7f8658c9-287bn  -- /bin/bash
 ---
 # APP Definitions
 ---
@@ -129,11 +129,11 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: todoapp-config
-  namespace: tpi-dev
+  namespace: tpi-prod
   labels:
     app: todoapp
 data:
-  BASE_URL: "tpi/dev/"
+  BASE_URL: "tpi/prod/"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -141,7 +141,7 @@ metadata:
   labels:
     run: todoapp-deployment
   name: todoapp-deployment
-  namespace: tpi-dev
+  namespace: tpi-prod
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -159,7 +159,7 @@ spec:
         run: todoapp-deployment
     spec:
       containers:
-        - image: patriciocostilla/todoapp:dev
+        - image: patriciocostilla/todoapp:latest
           imagePullPolicy: Always
           name: todoapp-deployment
           ports:
@@ -206,7 +206,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: todoapp-service
-  namespace: tpi-dev
+  namespace: tpi-prod
 spec:
   selector:
     run: todoapp-deployment
@@ -219,14 +219,14 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: todoapp-ingress
-  namespace: tpi-dev
+  namespace: tpi-prod
   # annotations:
   #  nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
     - http:
         paths:
-          - path: /tpi/dev
+          - path: /tpi/prod
             pathType: Prefix
             backend:
               service:
@@ -234,4 +234,4 @@ spec:
                 port:
                   number: 80
 ---
-# kubectl exec -n tpi-dev --stdin --tty todoapp-deployment-59657f854b-78vcr  -- sh
+# kubectl exec -n tpi-prod --stdin --tty todoapp-deployment-59657f854b-78vcr  -- sh
