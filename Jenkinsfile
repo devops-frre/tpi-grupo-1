@@ -35,7 +35,7 @@ pipeline {
       }
 
       stage('Promote') {
-      when { branch 'master' }
+      when { branch 'main' }
       steps {
         container('docker') {    
           script {
