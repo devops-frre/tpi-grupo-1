@@ -16,6 +16,7 @@ class TodoList(models.Model): #Todolist able name that inherits models.Model
     created = models.DateField(default=timezone.now().strftime("%Y-%m-%d")) # a date
     due_date = models.DateField(default=timezone.now().strftime("%Y-%m-%d")) # a date
     category = models.ForeignKey(Category, default="general", on_delete=models.CASCADE) # a foreignkey
+    author = models.CharField(max_length=250, null=True)
     class Meta:
         ordering = ["-created"] #ordering by the created field
     def __str__(self):
